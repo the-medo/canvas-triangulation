@@ -8,12 +8,27 @@ const trianglesToCheck = [];
 const intToPoint = (n) => {
     const point = {
         x: n % w,
-            y: Math.floor(n / w),
+        y: Math.floor(n / w),
     }
 
     // if (point.x === w - 1) point.x = w;
     // if (point.y === h - 1) point.y = h;
     return point;
+}
+
+const linesIntersect = (l1s, l1e, l2s, l2e) => {
+    const {x: x1, y: y1} = l1s;
+    const {x: x2, y: y2} = l1e;
+    const {x: x3, y: y3} = l2s;
+    const {x: x4, y: y4} = l2e;
+
+    let den = ((y4 - y3)*(x2 - x1) - (x4 - x3)*(y2 - y1));
+    if (den === 0) return false; // Lines are parallel
+
+    let ua = ((x4 - x3)*(y1 - y3) - (y4 - y3)*(x1 - x3)) / den;
+    let ub = ((x2 - x1)*(y1 - y3) - (y2 - y1)*(x1 - x3)) / den;
+
+    return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1;
 }
 
 function crossProduct(a,b,c) {
@@ -51,6 +66,8 @@ function addTriangle(a,b,c) {
         rgb: {r:0, g:0, b:0},
         neighbors: [],
     };
+
+    console.log("Adding triangle ",triangleCount,  {...triangles[triangleCount]})
 
     return triangles[triangleCount];
 }
@@ -104,6 +121,17 @@ window.onload = function() {
             console.log(touchingPoints.length);
             if (point4 === undefined || point1 === undefined || touchingPoints.length !== 2) return;
 
+            //check if new line would go outside of triangle
+            const pN = intToPoint(newPoint);
+            const pP1 = intToPoint(point1);
+            const pP4 = intToPoint(point4);
+            const pT1 = intToPoint(touchingPoints[0]);
+            const pT2 = intToPoint(touchingPoints[1]);
+
+            const intersects = linesIntersect(pN, pP4, pP1, pT1) || linesIntersect(pN, pP4, pP1, pT2);
+            if (intersects) return;
+
+
 
             //get new neighbors = neighbors of current triangle and neighbors of chosen neighboring triangle
             const newNeighbors = [];
@@ -113,6 +141,8 @@ window.onload = function() {
             neighbor.neighbors.forEach(t => {
                 if (t !== triangle.id) newNeighbors.push(t)
             });
+
+
 
 
             //deactivate active+neighbor triangles
@@ -135,8 +165,10 @@ window.onload = function() {
                 const t = triangles[nn];
                 const createdT = trianglesToCheck.find(x => t.vertices.filter(v => x.vertices.includes(v)).length === 2);
 
-                createdT.neighbors.push(t.id);
-                t.neighbors = [createdT.id, ...t.neighbors.filter(x => triangles[x].active)];
+                if (createdT) {
+                    createdT.neighbors.push(t.id);
+                    t.neighbors = [createdT.id, ...t.neighbors.filter(x => triangles[x].active)];
+                }
             });
 
             console.log("trianglesToCheck: ", trianglesToCheck)
@@ -169,8 +201,8 @@ window.onload = function() {
                 const c  = intToPoint(t.vertices[2])
 
                 displayedContext.fillStyle = `rgb(${t.rgb.r}, ${t.rgb.g}, ${t.rgb.b})`;
-                displayedContext.strokeStyle = displayedContext.fillStyle;
-                displayedContext.lineWidth = 1;
+                // displayedContext.strokeStyle = `rgb(${stepCount % 3 === 0 ? 255 : 0}, ${stepCount % 3 === 1 ? 255 : 0}, ${stepCount % 3 === 2 ? 255 : 0})`;
+                displayedContext.lineWidth = 0;
 
                 displayedContext.beginPath();
                 displayedContext.moveTo(a.x * ratio, a.y * ratio); // Move to the first vertex
@@ -183,6 +215,8 @@ window.onload = function() {
             })
             console.log(" ==========================================")
         }
+
+        hiddenCanvas.addEventListener('click', step)
 
         trianglesToCheck.push(addTriangle(0, w-1, w*(h-1)));
         trianglesToCheck.push(addTriangle(w-1, w*(h-1), w*h-1));
@@ -216,8 +250,11 @@ window.onload = function() {
             const b  = intToPoint(t.vertices[1])
             const c  = intToPoint(t.vertices[2])
 
+            console.log("A", a, "B", b, "C", c)
+
             displayedContext.fillStyle = `rgb(${t.rgb.r}, ${t.rgb.g}, ${t.rgb.b})`;
             displayedContext.strokeStyle = displayedContext.fillStyle;
+            // displayedContext.strokeStyle = `rgba(${t.rgb.r}, ${t.rgb.g}, ${t.rgb.b}, 0)`;
             displayedContext.lineWidth = 1;
 
             displayedContext.beginPath();
@@ -230,13 +267,7 @@ window.onload = function() {
             displayedContext.stroke();
         })
 
-        // setInterval(step, 25);
-        step()
-        step()
-        step()
-        step()
-        step()
-        step()
+        setInterval(step, 25);
 
     };
 
